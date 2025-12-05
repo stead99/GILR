@@ -11,6 +11,7 @@ data_dir=/mnt/pgx_src_data_pool_4/seqc2/wes/fastq
 
 # Base output directory for results
 results_base=/mnt/pgx_src_data_pool_4/GILR/results/WES
+results_base2=/mnt/pgx_src_data_pool_4/GILR/results/WES_bobed
 pon_dir=/mnt/pgx_src_data_pool_4/GILR/results/WES/pon
 
 # Log directory

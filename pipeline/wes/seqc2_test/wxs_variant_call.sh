@@ -13,31 +13,26 @@ process_tn_pair() {
     normal_name=$2
     pair_id="${tumor_name}_vs_${normal_name}" # Used for logging
 
-        # Set up sample-specific log file (basic logging using simple redirection)
+    # Set up sample-specific log file (basic logging using simple redirection)
     logfile="${log_dir}/${pair_id}.$(date +"%Y%m%d%H%M").log"
     
-    # Check if 'tee' is available to decide logging method
-    if command -v tee >/dev/null 2>&1; then
-        # If tee exists, use a simple trick to pipe output, still might not work with extremely old shell
-        echo "Using tee for logging to $logfile"
-        # This part is tricky to do inside a function without process substitution
-        # We fall back to redirecting ONLY to the file below if process substitution fails
-    else
-        echo "tee command not found or process substitution unsupported. Logging only to file: $logfile"
-    fi
-
-    # Redirect all subsequent output of this function ONLY to the log file (no screen output)
-    # This is a highly compatible method but lacks simultaneous console output.
+    # --------------------------------------------------
+    # 兼容性日志记录方法 (Compatibility Logging Method)
+    # 将所有输出重定向到日志文件，不支持同时输出到屏幕
+    # Redirects all output to the log file ONLY. 
+    # Does not support simultaneous console output.
+    # --------------------------------------------------
+    echo "Logging all output for pair $pair_id to $logfile (console output disabled for compatibility)."
     exec > "$logfile" 2>&1
 
-    set -x # Log commands as they are executed (these logs now only go to the file)
-
+    set -x # Log commands as they are executed
 
     # Define paths specific to this pair
-    dedup_dir=${results_base}/dedup # Use the global data_dir as input source
+    dedup_dir=${results_base}/dedup
     BQSR_dir=${results_base}/BQSR
     Mutect2_dir=${results_base}/Mutect2
-    mkdir -p "$BQSR_dir" "$Mutect2_dir"
+    strelka_dir=${results_base}/strelka
+    mkdir -p "$BQSR_dir" "$Mutect2_dir" "$strelka_dir"
 
     TUMOR_BAM=${dedup_dir}/${tumor_name}.dedup.bam
     NORMAL_BAM=${dedup_dir}/${normal_name}.dedup.bam
@@ -53,8 +48,11 @@ process_tn_pair() {
     # 1. BQSR (Base Quality Score Recalibration)
     # ******************************************
     start_time_mod=$(date +%s)
+    
+    --- Dynamic BQSR Commands (if you eventually uncomment them) ---
+    These currently rely on fixed $db_mills and $dbsnp variables
 
-    # Tumor BQSR
+    Tumor BQSR
     singularity exec $IMG_GATK gatk BaseRecalibrator \
       -I "$TUMOR_BAM" \
       -R "$fasta" \
@@ -93,49 +91,87 @@ process_tn_pair() {
     # ******************************************
     # 2. Mutect2 Somatic Variant Calling
     # ******************************************
-    # Note: Placeholder 'pon.vcf.gz' and 'common_biallelic.vcf.gz' must exist in $gatk_res
     start_time_mod=$(date +%s)
-    singularity exec $IMG_GATK gatk Mutect2 \
-         -R "${fasta}" \
-         -I "${TUMOR_RECAL_BAM}" \
-         -I "${NORMAL_RECAL_BAM}" \
-         -normal "$normal_name" \
-         --germline-resource "${germline_resource}" \
-         #--panel-of-normals "${pon_dir}/pon.vcf.gz" \
-         -O "${MUTECT2_VCF}"
+    
+    # --- Dynamic Mutect2 Command Building ---
+    MUTECT2_CMD="singularity exec $IMG_GATK gatk Mutect2 -R \"${fasta}\" -I \"${TUMOR_RECAL_BAM}\" -I \"${NORMAL_RECAL_BAM}\""
+    
+    if [[ -f "${bed_file}" ]]; then
+        echo "Adding --intervals flag to Mutect2 using ${bed_file}"
+        MUTECT2_CMD+=" --intervals \"${bed_file}\""
+    else
+        echo "Warning: bed_file not found. Mutect2 running whole-genome."
+    fi
+
+    MUTECT2_CMD+=" -normal \"$normal_name\" --germline-resource \"${germline_resource}\" -O \"${MUTECT2_VCF}\""
+    eval $MUTECT2_CMD
+    # ----------------------------------------
 
     ### GetPileupSummaries & CalculateContamination & FilterMutectCalls
-    singularity exec $IMG_GATK gatk GetPileupSummaries \
-       -I "${TUMOR_RECAL_BAM}" \
-       --intervals "${bed_file}" \
-       -V "${common_biallelic}" \
-       -L "${common_biallelic}" \
-       -O ${Mutect2_dir}/${tumor_name}.pileups.table
 
-    singularity exec $IMG_GATK gatk GetPileupSummaries \
-       -I "${NORMAL_RECAL_BAM}" \
-       --intervals "${bed_file}" \
-       -V "${common_biallelic}" \
-       -L "${common_biallelic}" \
-       -O ${Mutect2_dir}/${normal_name}.pileups.table
+    # --- Dynamic GetPileupSummaries Command Building ---
+    # Use dynamic command building to omit the interval flags completely if the file is missing
+    GPS_TUMOR_CMD="singularity exec $IMG_GATK gatk GetPileupSummaries -I \"${TUMOR_RECAL_BAM}\" -V \"${common_biallelic}\" -L \"${common_biallelic}\" -O ${Mutect2_dir}/${tumor_name}.pileups.table"
+    GPS_NORMAL_CMD="singularity exec $IMG_GATK gatk GetPileupSummaries -I \"${NORMAL_RECAL_BAM}\" -V \"${common_biallelic}\" -L \"${common_biallelic}\" -O ${Mutect2_dir}/${normal_name}.pileups.table"
+    
+    if [[ -f "${bed_file}" ]]; then
+        echo "Adding --intervals and -L flags to GetPileupSummaries using ${bed_file}"
+        GPS_TUMOR_CMD+=" --intervals \"${bed_file}\""
+        GPS_NORMAL_CMD+=" --intervals \"${bed_file}\""
+    else
+        echo "Warning: bed_file not found. GetPileupSummaries running whole-genome (may take longer)."
+    fi
+    
+    echo "Executing Tumor GetPileupSummaries command..."
+    eval $GPS_TUMOR_CMD
 
+    echo "Executing Normal GetPileupSummaries command..."
+    eval $GPS_NORMAL_CMD
+    # --------------------------------------------------
+
+    echo "Calculating Contamination..."
     singularity exec $IMG_GATK gatk CalculateContamination \
        -I ${Mutect2_dir}/${tumor_name}.pileups.table \
        -matched ${Mutect2_dir}/${normal_name}.pileups.table \
        -O ${Mutect2_dir}/${tumor_name}.contamination.table \
        --segments ${Mutect2_dir}/${tumor_name}.segments.tsv
 
+    echo "Filtering Mutect Calls..."
     singularity exec $IMG_GATK gatk FilterMutectCalls \
        -R "${fasta}" \
        -V "${MUTECT2_VCF}" \
        --contamination-table ${Mutect2_dir}/${tumor_name}.contamination.table \
        --tumor-segmentation ${Mutect2_dir}/${tumor_name}.segments.tsv \
        -O ${Mutect2_dir}/${tumor_name}.mutect2.filtered.vcf.gz
+    
+    # ******************************************
+    # 4. Strelka
+    # ******************************************
+    start_time_mod=$(date +%s)
+
+    # --- Dynamic Strelka Configure Command Building ---
+    STRELKA_CFG_CMD="singularity exec $IMG_strelka configureStrelkaSomaticWorkflow.py"
+    STRELKA_CFG_CMD+=" --referenceFasta ${fasta} --tumorBam ${TUMOR_RECAL_BAM} --normalBam ${NORMAL_RECAL_BAM} --runDir ${strelka_dir}/${pair_id}"
+    
+    if [[ -f "${ex_decoys}" ]]; then
+        echo "Adding --callRegions flag to Strelka using ${ex_decoys}"
+        STRELKA_CFG_CMD+=" --callRegions ${ex_decoys}"
+    else
+        echo "Warning: ex_decoys not found. Strelka running whole-genome."
+    fi
+    
+    eval $STRELKA_CFG_CMD
+    # --------------------------------------------------
+
+    singularity exec $IMG_strelka \
+    ${strelka_dir}/${pair_id}/runWorkflow.py -m local -j $nt
+
+    zcat ${strelka_dir}/${pair_id}/results/variants/somatic.snvs.vcf.gz|awk -F '\t' '{if(($1~"^#")||($1!~"^#" && $7=="PASS")){print $0}}' > ${strelka_dir}/${pair_id}/results/variants/${pair_id}.snvs.PASS.vcf
+    zcat ${strelka_dir}/${pair_id}/results/variants/somatic.indels.vcf.gz|awk -F '\t' '{if(($1~"^#")||($1!~"^#" && $7=="PASS")){print $0}}' > ${strelka_dir}/${pair_id}/results/variants/${pair_id}.indels.PASS.vcf
 
     end_time_mod=$(date +%s)
-    echo "Module Mutect2 Elapsed time: "$(($end_time_mod - $start_time_mod))" sec"
+    echo "Module strelka Elapsed time: "$(($end_time_mod - $start_time_mod))" sec"
     echo "--- Finished processing for pair: $pair_id ---"
-    
     set +x
 }
 

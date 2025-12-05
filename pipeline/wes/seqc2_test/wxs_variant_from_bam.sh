@@ -39,8 +39,8 @@ process_tn_pair() {
     Mutect2_dir=${results_base}/Mutect2
     mkdir -p "$BQSR_dir" "$Mutect2_dir"
 
-    TUMOR_BAM=${dedup_dir}/${tumor_name}.dedup.bam
-    NORMAL_BAM=${dedup_dir}/${normal_name}.dedup.bam
+    TUMOR_BAM=${dedup_dir}/${tumor_name}.bwa.dedup.bam
+    NORMAL_BAM=${dedup_dir}/${normal_name}.bwa.dedup.bam
 
     # Check if input BAMs exist
     if [[ ! -f "$TUMOR_BAM" || ! -f "$NORMAL_BAM" ]]; then
@@ -101,7 +101,6 @@ process_tn_pair() {
          -I "${NORMAL_RECAL_BAM}" \
          -normal "$normal_name" \
          --germline-resource "${germline_resource}" \
-         #--panel-of-normals "${pon_dir}/pon.vcf.gz" \
          -O "${MUTECT2_VCF}"
 
     ### GetPileupSummaries & CalculateContamination & FilterMutectCalls

@@ -71,10 +71,10 @@ vcf_compare <- function(dt_hc, dt_test, test_name, res_name){
 
 ### test with hc regeion ---
 dt_test <- get_pos(data_dir = './data/seqc2/',
-                   filename = 'WES_IL_T_1.mutect2.PASS.snv.hc.recode.vcf')
+                   filename = 'WES_FD_T_1.mutect2.filtered.snp.vcf')
 dt_performamce <- vcf_compare(dt_hc = dt_snv_h, dt_test = dt_test, 
-                              test_name = 'three_consensus_il_1',
-                              res_name = 'seqc2_three_consensus_il_1_snv')
+                              test_name = 'three_consensus_fd_1',
+                              res_name = 'seqc2_three_consensus_fd_1_snv')
 
 ### IL1-3 tnseq and tnscope intersection
 dt_int_p <- lapply(1, function(x){
