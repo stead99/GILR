@@ -24,8 +24,8 @@ germline_resource=/mnt/pgx_src_data_pool_4/reference/human/GRCh38/sentieon/germl
 dbsnp=$gatk_res/Homo_sapiens_assembly38.dbsnp138.vcf
 db_mills=$gatk_res/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
 common_biallelic=$gatk_res/somatic-hg38_small_exac_common_3.hg38.vcf.gz
-bed_file=/mnt/pgx_src_data_pool_4/reference/human/GRCh38/bed_files/novogene_agilent_region.hg38.bed
-ex_decoys=//mnt/pgx_src_data_pool_4/reference/human/GRCh38/bed_files/novogene_agilent_region.hg38.bed.gz
+#bed_file=/mnt/pgx_src_data_pool_4/reference/human/GRCh38/bed_files/novogene_agilent_region.hg38.bed
+#ex_decoys=//mnt/pgx_src_data_pool_4/reference/human/GRCh38/bed_files/novogene_agilent_region.hg38.bed.gz
 # Note: common_biallelic.vcf.gz and pon.vcf.gz must also exist in $gatk_res
 
 # Execution environments (Singularity images)

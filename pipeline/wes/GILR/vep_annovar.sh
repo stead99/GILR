@@ -4,9 +4,9 @@
 # 1. 定义全局配置和路径 (Global Configuration)
 # ======================================================
 log_dir=/mnt/pgx_src_data_pool_4/GILR/code/wes_variant_call/variant_call
-data_dir=/mnt/pgx_src_data_pool_4/GILR/results/WES/Mutect2
-vep_dir=/mnt/pgx_src_data_pool_4/GILR/results/WES/VEP
-anno_dir=/mnt/pgx_src_data_pool_4/GILR/results/WES/annovar
+data_dir=/mnt/pgx_src_data_pool_4/GILR/results/WES_bobed/Mutect2
+vep_dir=/mnt/pgx_src_data_pool_4/GILR/results/WES_bobed/VEP
+anno_dir=/mnt/pgx_src_data_pool_4/GILR/results/WES_bobed/annovar
 fasta=/mnt/pgx_src_data_pool_4/reference/human/GRCh38/sentieon/GRCh38.d1.vd1.fa
 cache=/mnt/pgx_src_data_pool_4/reference/human/GRCh38/ensembl_vep
 annovar_database=/mnt/pgx_src_data_pool_4/reference/human/GRCh38/annovar_database
@@ -23,7 +23,7 @@ mkdir -p "${log_dir}/log"
 # 2. 指定外部样本列表文件名 (Specify External Samples List File)
 # ======================================================
 # 将文件名直接硬编码在这里，不再需要命令行参数
-SAMPLES_FILE="sample_vep_gilr.txt"
+SAMPLES_FILE="sample_anno_gilr.txt"
 
 if [ ! -f "$SAMPLES_FILE" ]; then
     echo "Error: Samples file '$SAMPLES_FILE' not found in the current directory."

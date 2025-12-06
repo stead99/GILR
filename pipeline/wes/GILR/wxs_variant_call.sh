@@ -30,8 +30,8 @@ process_tn_pair() {
     # Define paths specific to this pair
     dedup_dir=${results_base}/dedup
     BQSR_dir=${results_base}/BQSR
-    Mutect2_dir=${results_base}/Mutect2
-    strelka_dir=${results_base}/strelka
+    Mutect2_dir=${results_base2}/Mutect2
+    strelka_dir=${results_base2}/strelka
     mkdir -p "$BQSR_dir" "$Mutect2_dir" "$strelka_dir"
 
     TUMOR_BAM=${dedup_dir}/${tumor_name}.dedup.bam
@@ -47,41 +47,41 @@ process_tn_pair() {
     # ******************************************
     # 1. BQSR (Base Quality Score Recalibration)
     # ******************************************
-    start_time_mod=$(date +%s)
+    # start_time_mod=$(date +%s)
     
-    --- Dynamic BQSR Commands (if you eventually uncomment them) ---
-    These currently rely on fixed $db_mills and $dbsnp variables
+    # --- Dynamic BQSR Commands (if you eventually uncomment them) ---
+    # These currently rely on fixed $db_mills and $dbsnp variables
 
-    Tumor BQSR
-    singularity exec $IMG_GATK gatk BaseRecalibrator \
-      -I "$TUMOR_BAM" \
-      -R "$fasta" \
-      --known-sites "$db_mills" \
-      --known-sites "$dbsnp" \
-      -O ${BQSR_dir}/${tumor_name}.bqsr.grp
+    # Tumor BQSR
+    # singularity exec $IMG_GATK gatk BaseRecalibrator \
+    #   -I "$TUMOR_BAM" \
+    #   -R "$fasta" \
+    #   --known-sites "$db_mills" \
+    #   --known-sites "$dbsnp" \
+    #   -O ${BQSR_dir}/${tumor_name}.bqsr.grp
 
-    singularity exec $IMG_GATK gatk ApplyBQSR \
-      -R "$fasta" \
-      -I "$TUMOR_BAM" \
-      --bqsr-recal-file ${BQSR_dir}/${tumor_name}.bqsr.grp \
-      -O ${BQSR_dir}/${tumor_name}.recalibrated.bam
+    # singularity exec $IMG_GATK gatk ApplyBQSR \
+    #   -R "$fasta" \
+    #   -I "$TUMOR_BAM" \
+    #   --bqsr-recal-file ${BQSR_dir}/${tumor_name}.bqsr.grp \
+    #   -O ${BQSR_dir}/${tumor_name}.recalibrated.bam
 
-    # Normal BQSR
-    singularity exec $IMG_GATK gatk BaseRecalibrator \
-      -I "$NORMAL_BAM" \
-      -R "$fasta" \
-      --known-sites "$db_mills" \
-      --known-sites "$dbsnp" \
-      -O ${BQSR_dir}/${normal_name}.bqsr.grp
+    # # Normal BQSR
+    # singularity exec $IMG_GATK gatk BaseRecalibrator \
+    #   -I "$NORMAL_BAM" \
+    #   -R "$fasta" \
+    #   --known-sites "$db_mills" \
+    #   --known-sites "$dbsnp" \
+    #   -O ${BQSR_dir}/${normal_name}.bqsr.grp
 
-    singularity exec $IMG_GATK gatk ApplyBQSR \
-      -R "$fasta" \
-      -I "$NORMAL_BAM" \
-      --bqsr-recal-file ${BQSR_dir}/${normal_name}.bqsr.grp \
-      -O ${BQSR_dir}/${normal_name}.recalibrated.bam
+    # singularity exec $IMG_GATK gatk ApplyBQSR \
+    #   -R "$fasta" \
+    #   -I "$NORMAL_BAM" \
+    #   --bqsr-recal-file ${BQSR_dir}/${normal_name}.bqsr.grp \
+    #   -O ${BQSR_dir}/${normal_name}.recalibrated.bam
 
-    end_time_mod=$(date +%s)
-    echo "Module BQSR Elapsed time: "$(($end_time_mod - $start_time_mod))" sec"
+    # end_time_mod=$(date +%s)
+    # echo "Module BQSR Elapsed time: "$(($end_time_mod - $start_time_mod))" sec"
 
     # Define recalibrated BAM paths for subsequent steps
     TUMOR_RECAL_BAM=${BQSR_dir}/${tumor_name}.recalibrated.bam
@@ -91,20 +91,20 @@ process_tn_pair() {
     # ******************************************
     # 2. Mutect2 Somatic Variant Calling
     # ******************************************
-    start_time_mod=$(date +%s)
+    # start_time_mod=$(date +%s)
     
-    # --- Dynamic Mutect2 Command Building ---
-    MUTECT2_CMD="singularity exec $IMG_GATK gatk Mutect2 -R \"${fasta}\" -I \"${TUMOR_RECAL_BAM}\" -I \"${NORMAL_RECAL_BAM}\""
+    # # --- Dynamic Mutect2 Command Building ---
+    # MUTECT2_CMD="singularity exec $IMG_GATK gatk Mutect2 -R \"${fasta}\" -I \"${TUMOR_RECAL_BAM}\" -I \"${NORMAL_RECAL_BAM}\""
     
-    if [[ -f "${bed_file}" ]]; then
-        echo "Adding --intervals flag to Mutect2 using ${bed_file}"
-        MUTECT2_CMD+=" --intervals \"${bed_file}\""
-    else
-        echo "Warning: bed_file not found. Mutect2 running whole-genome."
-    fi
+    # if [[ -f "${bed_file}" ]]; then
+    #     echo "Adding --intervals flag to Mutect2 using ${bed_file}"
+    #     MUTECT2_CMD+=" --intervals \"${bed_file}\""
+    # else
+    #     echo "Warning: bed_file not found. Mutect2 running whole-genome."
+    # fi
 
-    MUTECT2_CMD+=" -normal \"$normal_name\" --germline-resource \"${germline_resource}\" -O \"${MUTECT2_VCF}\""
-    eval $MUTECT2_CMD
+    # MUTECT2_CMD+=" -normal \"$normal_name\" --germline-resource \"${germline_resource}\" -O \"${MUTECT2_VCF}\""
+    # eval $MUTECT2_CMD
     # ----------------------------------------
 
     ### GetPileupSummaries & CalculateContamination & FilterMutectCalls
