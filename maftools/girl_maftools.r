@@ -71,6 +71,10 @@ pt <- ggdotchart(dt_data_300d, x = "Hugo_Symbol", y = "vaf",
 print(pt)
 dev.off()
 
+### output GILR 300 data table
+dt_data_girl300 <- dt_data_300[, colnames(dt_data_300)[c(1:2, 4:7, 9:18, 35:45, 115)], with = FALSE]
+fwrite(dt_data_girl300, file = './results/maftools/GILR300/data/gilr300_somatic_mutation.txt', sep ='\t')
+
 ### GILR 3000 ------
 # filter no bed region point ---
 dt_maf_3000 <- fread('./data/GILR/nobed/GILR_3000.maf')
